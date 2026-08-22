@@ -1,5 +1,5 @@
 """
-This module provides a blueprint for status-related resources.
+This module provides a router for status-related resources.
 """
 
 # --------------------------------------------------------------------------------
@@ -8,38 +8,40 @@ This module provides a blueprint for status-related resources.
 
 import time
 
+from fastapi import APIRouter
+
 from . import START_TIME
-from flask import Blueprint, jsonify, redirect
+from .responses import RedirectResponse
 
 
 # --------------------------------------------------------------------------------
-# Blueprint
+# Router
 # --------------------------------------------------------------------------------
 
-status = Blueprint('status', __name__)
+router = APIRouter()
 
 
 # --------------------------------------------------------------------------------
 # Resources
 # --------------------------------------------------------------------------------
 
-@status.route('/')
-def index():
+@router.get('/')
+async def index() -> RedirectResponse:
   """
   Redirects to '/status/'.
   """
 
-  return redirect('/status/')
+  return RedirectResponse('/status/', status_code=302)
 
 
-@status.route('/status/', methods=['GET'])
-def status_get():
+@router.get('/status/')
+async def status_get():
   """
   Provides uptime information about the web service.
   """
-  
+
   response = {
     'online': True,
     'uptime': round(time.time() - START_TIME, 3)
   }
-  return jsonify(response)
+  return response

@@ -1,13 +1,12 @@
 """
-This module is the "entry point" for running this Flask app.
+This module is the "entry point" for running this FastAPI app.
 It creates the app using the "create_app" factory function.
 It also creates a CLI command "init-db" for creating the app's SQLite database.
 
 To run this app:
-1. Set the "FLASK_APP" environment variable to "registry".
-2. Run "flask run".
+1. Run "uvicorn registry:app".
 
-By default, this app uses the "development" config.
+By default, this app uses the "default" config.
 Change the target config by setting the "FLASK_CONFIG" environment variable.
 """
 
@@ -18,7 +17,8 @@ Change the target config by setting the "FLASK_CONFIG" environment variable.
 import click
 import os
 
-from app import create_app, db
+from app import create_app
+from app.database import db
 from app.models import Device
 
 
@@ -33,7 +33,12 @@ app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 # CLI Commands
 # --------------------------------------------------------------------------------
 
-@app.cli.command('init-db')
+@click.group()
+def cli():
+    """Command line utilities for the device registry."""
+
+
+@cli.command('init-db')
 def init_db():
     """Initializes the database with devices."""
 
@@ -64,9 +69,17 @@ def init_db():
       serial_number='LGM-20201',
       owner='engineer')
 
-    db.session.add(light)
-    db.session.add(thermostat)
-    db.session.add(fridge)
-    db.session.commit()
+    session = db.session()
+    try:
+      session.add(light)
+      session.add(thermostat)
+      session.add(fridge)
+      session.commit()
+    finally:
+      session.close()
     
     click.echo('Initialized the database with fresh data.')
+
+
+if __name__ == '__main__':
+    cli()

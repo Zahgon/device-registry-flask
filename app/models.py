@@ -6,7 +6,11 @@ This module provides database models.
 # Imports
 # --------------------------------------------------------------------------------
 
-from . import db
+from typing import Any, Dict
+
+from sqlalchemy import Column, Integer, String
+
+from .database import Base
 from .errors import ValidationError
 
 
@@ -14,15 +18,15 @@ from .errors import ValidationError
 # Models
 # --------------------------------------------------------------------------------
 
-class Device(db.Model):
+class Device(Base):
   __tablename__ = 'devices'
-  id = db.Column(db.Integer, primary_key=True)
-  name = db.Column(db.String(64))
-  location = db.Column(db.String(64))
-  type = db.Column(db.String(64))
-  model = db.Column(db.String(64))
-  serial_number = db.Column(db.String(16))
-  owner = db.Column(db.String(64))
+  id = Column(Integer, primary_key=True)
+  name = Column(String(64))
+  location = Column(String(64))
+  type = Column(String(64))
+  model = Column(String(64))
+  serial_number = Column(String(16))
+  owner = Column(String(64))
 
   @staticmethod
   def validate_full(json_data):
@@ -46,7 +50,7 @@ class Device(db.Model):
     Device.validate_full(json_data)
     return Device(owner=owner, **json_data)
 
-  def to_json(self):
+  def to_json(self) -> Dict[str, Any]:
     """Creates a JSON-compatible dictionary for this Device object's values."""
     return {
       'id': self.id,

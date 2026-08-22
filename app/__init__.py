@@ -1,7 +1,7 @@
 """
 This module provides the app factory method.
-It adds all the blueprints to the app.
-This module also provides a reference to the database object, users, and the start time.
+It adds all the routers to the app.
+This module also provides a reference to the users and the start time.
 """
 
 # --------------------------------------------------------------------------------
@@ -12,9 +12,10 @@ import time
 
 from config import config
 
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash
+from fastapi import FastAPI
+from fastapi.routing import APIRoute
+
+from .responses import JsonResponse
 
 
 # --------------------------------------------------------------------------------
@@ -23,7 +24,6 @@ from werkzeug.security import generate_password_hash
 
 START_TIME = time.time()
 
-db = SQLAlchemy()
 users = dict()
 
 
@@ -31,32 +31,46 @@ users = dict()
 # App Factory
 # --------------------------------------------------------------------------------
 
-def create_app(config_name):
-  app = Flask(__name__)
-  app.config.from_object(config[config_name])
+def create_app(config_name: str) -> FastAPI:
+  app = FastAPI(title='Device Registry', default_response_class=JsonResponse)
+  app.state.config = config[config_name]
 
-  db.init_app(app)
-  with app.app_context():
-    db.create_all()
+  # Werkzeug redirected to a path with one slash more or one slash less, which
+  # Starlette's own slash redirects do not cover: MethodRoutingMiddleware does.
+  app.router.redirect_slashes = False
 
-  from .errors import errors as error_blueprint
-  app.register_blueprint(error_blueprint)
+  from .database import db
+  db.init_app(app.state.config.DATABASE_URI)
+  db.create_all()
 
-  from .status import status as status_blueprint
-  app.register_blueprint(status_blueprint)
+  from .errors import register_error_handlers
+  register_error_handlers(app)
 
-  from .auth import auth as auth_blueprint
-  app.register_blueprint(auth_blueprint)
+  # The middleware added last runs outermost, so header casing covers every response.
+  from .routing import HeaderCaseMiddleware, MethodRoutingMiddleware
+  app.add_middleware(MethodRoutingMiddleware)
+  app.add_middleware(HeaderCaseMiddleware)
 
-  from .devices import devices as devices_blueprint
-  app.register_blueprint(devices_blueprint)
+  from .status import router as status_router
+  app.include_router(status_router)
 
-  username1 = app.config['AUTH_USERNAME1']
-  password1 = generate_password_hash(app.config['AUTH_PASSWORD1'])
+  from .auth import router as auth_router, generate_password_hash
+  app.include_router(auth_router)
+
+  from .devices import router as devices_router
+  app.include_router(devices_router)
+
+  # Every route that serves GET must also serve HEAD, like Werkzeug's router did.
+  for route in app.routes:
+    if isinstance(route, APIRoute) and 'GET' in route.methods:
+      route.methods = set(route.methods) | {'HEAD'}
+
+  username1 = app.state.config.AUTH_USERNAME1
+  password1 = generate_password_hash(app.state.config.AUTH_PASSWORD1)
   users[username1] = password1
 
-  username2 = app.config['AUTH_USERNAME2']
-  password2 = generate_password_hash(app.config['AUTH_PASSWORD2'])
+  username2 = app.state.config.AUTH_USERNAME2
+  password2 = generate_password_hash(app.state.config.AUTH_PASSWORD2)
   users[username2] = password2
 
   return app

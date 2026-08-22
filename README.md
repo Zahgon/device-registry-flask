@@ -1,8 +1,8 @@
-# Device Registry Service (Flask)
+# Device Registry Service (FastAPI)
 
 This project is the **Device Registry Service**,
 an example REST API web service for registering smart devices.
-It is written in Python using Flask, and it stores data in a SQLite database.
+It is written in Python using FastAPI, and it stores data in a SQLite database.
 Note that it is not a "real" web service, but rather one to use as a teaching example.
 This project also contains integration tests to test the REST API endpoints.
 
@@ -36,28 +36,23 @@ To install it:
 
 ## Running the web service
 
-The Device Registry Service is written using [Flask](https://flask.palletsprojects.com/en/2.0.x/).
-Before running it from the command line,
-set the `FLASK_APP` environment variable to the name of the app's main module, `registry`.
+The Device Registry Service is written using [FastAPI](https://fastapi.tiangolo.com/).
+It is an ASGI app, so it is served by [Uvicorn](https://www.uvicorn.org/).
+The app object is named `app`, and it lives in the app's main module, `registry`.
 
-* Windows: `set FLASK_APP=registry`
-* macOS and Linux: `export FLASK_APP=registry`
-
-To run the web service, run `flask run`.
+To run the web service, run `uvicorn registry:app --port 5000`.
 You should see output like this from the command line:
 
 ```bash
-$ flask run
- * Serving Flask app 'registry' (lazy loading)
- * Environment: production
-   WARNING: This is a development server. Do not use it in a production deployment.
-   Use a production WSGI server instead.
- * Debug mode: off
- * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+$ uvicorn registry:app --port 5000
+INFO:     Started server process [12345]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5000 (Press CTRL+C to quit)
 ```
 
 When running, the web service can be accessed at `http://127.0.0.1:5000/`
-(the address printed by the `flask run` output).
+(the address printed by the `uvicorn` output).
 If you load that address in a web browser, you should see the status for the REST API service.
 
 
@@ -69,7 +64,7 @@ but it works just fine for this small example web service.
 
 There are two ways to manage the app's database:
 
-1. *Testing:* create a fresh, empty, in-memory SQLite database every time `flask run` is launched.
+1. *Testing:* create a fresh, empty, in-memory SQLite database every time the app is launched.
 2. *Development:* create a SQLite database file named `registry_data.sqlite` with a few prepopulated devices.
 
 Set the `FLASK_CONFIG` environment variable to chose which database to use:
@@ -80,9 +75,11 @@ Set the `FLASK_CONFIG` environment variable to chose which database to use:
 If `FLASK_CONFIG` is not set, then the app uses the *Testing* database by default.
 
 If you want to use the *Development* database,
-you must create it *before* running the Flask app.
-Run `flask init-db` to create the initial `registry_data.sqlite` file in the project's root directory.
-Then, set `FLASK_CONFIG` to `development` and run `flask run` to run the app with this database.
+you must create it *before* running the app.
+Run `FLASK_CONFIG=development python registry.py init-db`
+to create the initial `registry_data.sqlite` file in the project's root directory.
+Then, set `FLASK_CONFIG` to `development` and run `uvicorn registry:app --port 5000`
+to run the app with this database.
 Any changes will persist, even after the app is restarted.
 
 
@@ -156,14 +153,14 @@ because inputs and secrets should *never* be committed to a publicly-shared loca
 (Nevertheless, this web service is a teaching example,
 so values are pasted in the section above for convenience and clarity.)
 
-Once the inputs file is ready, configure the app to use the *Testing* database and run `flask run`.
+Once the inputs file is ready, configure the app to use the *Testing* database
+and run `uvicorn registry:app --port 5000`.
 Then, in another command line terminal, run `python -m pytest tests`.
 Note that the web app must be running *before* launching the tests.
 
 Here's a condensed guide for running tests:
 
-1. Set the `FLASK_APP` environment variable to `registry`.
-2. Set the `FLASK_CONFIG` environment variable to `testing`.
-3. Run `flask run` from the project root directory.
-4. Create the `tests/integration/inputs.json` file.
-5. Run `python -m pytest tests` from the project root directory.
+1. Set the `FLASK_CONFIG` environment variable to `testing`.
+2. Run `uvicorn registry:app --port 5000` from the project root directory.
+3. Create the `tests/integration/inputs.json` file.
+4. Run `python -m pytest tests` from the project root directory.
